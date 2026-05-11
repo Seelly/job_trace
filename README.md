@@ -50,7 +50,7 @@
 #### 1. 下载插件
 
 ```bash
-git clone https://github.com/yourusername/job-trace-chrome-plugin.git
+git clone https://github.com/Seelly/job_trace
 cd job-trace-chrome-plugin
 ```
 
