@@ -51,7 +51,7 @@
 
 ```bash
 git clone https://github.com/Seelly/job_trace
-cd job-trace-chrome-plugin
+cd job-trace
 ```
 
 #### 2. 加载到 Chrome
