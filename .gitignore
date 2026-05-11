@@ -1,0 +1,7 @@
+chrome_user_data/
+data/
+.env
+.claude/
+.idea/
+.vscode/
+.cursor/

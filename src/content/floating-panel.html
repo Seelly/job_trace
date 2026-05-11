@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: transparent;
+      color: #1f2937;
+    }
+
+    .floating-panel {
+      width: 380px;
+      background: #f5f7fb;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+      overflow: hidden;
+    }
+
+    .panel-header {
+      background: #f5f7fb;
+      padding: 16px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: move;
+      user-select: none;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .panel-title-section {
+      flex: 1;
+    }
+
+    .panel-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin: 0;
+      color: #1f2937;
+    }
+
+    .panel-subtitle {
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .panel-actions {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .panel-btn {
+      background: #e5e7eb;
+      border: none;
+      color: #111827;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+
+    .panel-btn:hover {
+      background: #d1d5db;
+    }
+
+    .panel-content {
+      padding: 16px;
+      max-height: 500px;
+      overflow-y: auto;
+    }
+
+    .status-banner {
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 12px;
+      font-size: 12px;
+      line-height: 1.5;
+      display: none;
+    }
+
+    .status-banner.show {
+      display: block;
+    }
+
+    .status-idle {
+      background: #eef2ff;
+      color: #3730a3;
+    }
+
+    .status-success {
+      background: #ecfdf3;
+      color: #166534;
+    }
+
+    .status-warning {
+      background: #fff7ed;
+      color: #9a3412;
+    }
+
+    .status-error {
+      background: #fef2f2;
+      color: #991b1b;
+    }
+
+    .button-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: opacity 0.2s;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: #fff;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #1d4ed8;
+    }
+
+    .btn-secondary {
+      background: #111827;
+      color: #fff;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #374151;
+    }
+
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .form-group {
+      margin-bottom: 10px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .form-row .form-group {
+      margin-bottom: 0;
+    }
+
+    .form-group label {
+      display: grid;
+      gap: 4px;
+    }
+
+    .form-group span {
+      font-size: 12px;
+      color: #374151;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      padding: 9px 10px;
+      font-size: 13px;
+      background: #fff;
+      color: #1f2937;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #2563eb;
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .panel-collapsed .panel-content {
+      display: none;
+    }
+
+    .panel-collapsed {
+      width: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="floating-panel" id="floatingPanel">
+    <div class="panel-header" id="panelHeader">
+      <div class="panel-title-section">
+        <h1 class="panel-title">Job Trace</h1>
+        <p class="panel-subtitle">抓取当前页面职位信息并写入飞书</p>
+      </div>
+      <div class="panel-actions">
+        <button class="panel-btn" id="settingsBtn" title="设置">⚙</button>
+        <button class="panel-btn icon-btn" id="toggleBtn" title="折叠/展开">−</button>
+        <button class="panel-btn icon-btn" id="closeBtn" title="关闭">×</button>
+      </div>
+    </div>
+    <div class="panel-content">
+      <div class="status-banner status-idle show" id="statusBanner">
+        点击"抓取当前页面"开始解析职位信息
+      </div>
+
+      <div class="button-group">
+        <button type="button" class="btn btn-primary" id="captureBtn">抓取当前页面</button>
+        <button type="button" class="btn btn-secondary" id="submitBtn">写入飞书</button>
+      </div>
+
+      <form id="jobForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label>
+              <span>公司名称</span>
+              <input type="text" id="company" required>
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label>
+              <span>职位名称</span>
+              <input type="text" id="title" required>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>
+            <span>工作地点</span>
+            <input type="text" id="location">
+          </label>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>
+              <span>投递时间</span>
+              <input type="date" id="appliedDate" required>
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label>
+              <span>来源平台</span>
+              <input type="text" id="platform" required>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>
+            <span>投递链接</span>
+            <input type="url" id="jobUrl">
+          </label>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>
+              <span>投递方式</span>
+              <select id="deliveryMethod">
+                <option value="官网">官网</option>
+                <option value="Boss直聘">Boss直聘</option>
+                <option value="拉勾">拉勾</option>
+                <option value="LinkedIn">LinkedIn</option>
+                <option value="猎聘">猎聘</option>
+                <option value="前程无忧">前程无忧</option>
+                <option value="智联招聘">智联招聘</option>
+                <option value="内推">内推</option>
+                <option value="邮件">邮件</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label>
+              <span>当前状态</span>
+              <select id="status">
+                <option value="已投递" selected>已投递</option>
+                <option value="简历挂">简历挂</option>
+                <option value="测评">测评</option>
+                <option value="一面">一面</option>
+                <option value="一面挂">一面挂</option>
+                <option value="二面">二面</option>
+                <option value="二面挂">二面挂</option>
+                <option value="三面">三面</option>
+                <option value="三面挂">三面挂</option>
+                <option value="四面">四面</option>
+                <option value="四面挂">四面挂</option>
+                <option value="offer">offer</option>
+              </select>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>
+            <span>JD</span>
+            <textarea id="notes" rows="8"></textarea>
+          </label>
+        </div>
+      </form>
+    </div>
+  </div>
+</body>
+</html>

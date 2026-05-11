@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Job Trace Feishu Sync",
+  "version": "0.2.0",
+  "description": "抓取当前职位页面信息并写入飞书多维表格。",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabs",
+    "identity",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "https://open.feishu.cn/*",
+    "https://*.feishu.cn/*",
+    "https://*.larksuite.com/*"
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  },
+  "action": {
+    "default_title": "Job Trace - 点击显示/隐藏悬浮窗"
+  },
+  "options_page": "src/options/options.html",
+  "web_accessible_resources": [
+    {
+      "resources": ["src/content/floating-panel.html"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

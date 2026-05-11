@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Job Trace 设置</title>
+    <link rel="stylesheet" href="./options.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <div>
+          <h1>Job Trace 设置</h1>
+          <p>连接飞书并配置多维表格</p>
+        </div>
+      </header>
+
+      <section id="statusBanner" class="status-banner status-idle">
+        正在检查飞书连接状态...
+      </section>
+
+      <!-- 飞书授权卡片 -->
+      <section class="card">
+        <h2>飞书连接</h2>
+        <div id="authNotConnected">
+          <p class="tips">首次使用需要配置飞书应用凭证。如果已登录飞书，授权过程只需点击一次"同意"。</p>
+          <div class="grid" style="margin-top: 14px;">
+            <label>
+              <span>飞书应用 App ID</span>
+              <input id="appId" type="text" placeholder="在飞书开放平台创建应用后获取" />
+            </label>
+            <label>
+              <span>飞书应用 App Secret</span>
+              <input id="appSecret" type="password" placeholder="对应应用的 App Secret" />
+            </label>
+          </div>
+        </div>
+        <div class="actions" style="margin-top: 14px;">
+          <button id="authorizeButton" class="primary-button" type="button">连接飞书</button>
+          <button id="disconnectButton" class="ghost-button" type="button" style="display:none;">断开连接</button>
+        </div>
+        <div id="userInfo" style="display:none; margin-top: 10px;">
+          <p class="tips">已连接：<strong id="userName"></strong> (<span id="userEmail"></span>)</p>
+        </div>
+      </section>
+
+      <!-- 表格配置卡片 -->
+      <section id="tableConfigCard" class="card" style="display:none;">
+        <h2>表格配置</h2>
+
+        <label>
+          <span>多维表格链接</span>
+          <input id="bitableUrl" type="text" placeholder="粘贴飞书多维表格链接，如 https://xxx.feishu.cn/base/xxx?table=xxx" />
+        </label>
+
+        <div class="actions" style="margin-top: 10px;">
+          <button id="parseUrlButton" class="ghost-button" type="button">从链接解析</button>
+        </div>
+
+        <div class="grid" style="margin-top: 14px;">
+          <label>
+            <span>appToken</span>
+            <input id="appToken" type="text" placeholder="从链接自动解析或手动输入" />
+          </label>
+          <label>
+            <span>tableId</span>
+            <select id="tableId" disabled>
+              <option value="">请选择数据表</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="actions" style="margin-top: 14px;">
+          <button id="refreshTablesButton" class="ghost-button" type="button">刷新数据表列表</button>
+          <button id="testConnectionButton" class="secondary-button" type="button">测试连接</button>
+        </div>
+      </section>
+
+      <!-- 字段映射卡片 -->
+      <section id="fieldMappingCard" class="card" style="display:none;">
+        <h2>字段映射</h2>
+        <p class="tips">左侧为插件内部字段，右侧为飞书多维表格字段名。留空表示不写入该字段。</p>
+        <div class="grid field-grid" id="mappingGrid">
+        </div>
+        <div class="actions" style="margin-top: 14px;">
+          <button id="saveMappingButton" class="primary-button" type="button">保存配置</button>
+          <button id="resetMappingButton" class="ghost-button" type="button">恢复默认映射</button>
+        </div>
+      </section>
+
+      <!-- 说明卡片 -->
+      <section class="card">
+        <h2>说明</h2>
+        <ul>
+          <li>点击"连接飞书"后，会弹出飞书授权窗口，授权后即可自动获取访问令牌。</li>
+          <li>如果浏览器已登录飞书，授权过程通常只需点击一次"同意授权"。</li>
+          <li>粘贴多维表格链接后可自动解析 appToken 和 tableId，也可手动选择。</li>
+          <li>插件会自动管理令牌的刷新，无需手动维护。</li>
+        </ul>
+      </section>
+    </main>
+
+    <script src="./options.js"></script>
+  </body>
+</html>
