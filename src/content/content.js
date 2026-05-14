@@ -47,9 +47,8 @@
     );
 
     // 优先使用域名匹配公司名称
-    const companyFromDomain = getCompanyNameFromUrl(location.href);
+    const companyFromDomain = /zhipin\.com$/i.test(hostname) ? "" : getCompanyNameFromUrl(location.href);
     const company = firstNonEmpty(
-      companyFromDomain,
       siteData.company,
       domData.company,
       jsonLd.company,
@@ -57,6 +56,7 @@
       meta.siteName,
       guessCompanyFromPage(),
       guessCompanyFromDomain(hostname),
+      companyFromDomain,
       guessCompanyFromTitle(document.title)
     );
 
@@ -94,7 +94,7 @@
       jobUrl: location.href,
       notes: fullDescription,
       status: "已投递",
-      appliedDate: new Date().toISOString().slice(0, 10),
+      appliedDate: formatLocalDate(new Date()),
       deliveryMethod: inferDeliveryMethod(hostname),
       captureTime: new Date().toISOString(),
       confidence,
@@ -192,6 +192,14 @@
   }
 
   async function extractSiteEnhancedData(hostname, bodyText, headings, lines) {
+    if (/jobs\.bilibili\.com$/i.test(hostname)) {
+      return extractBilibiliJobData(lines);
+    }
+
+    if (/zhipin\.com$/i.test(hostname)) {
+      return extractBossJobData(lines, headings);
+    }
+
     if (/join\.qq\.com$/i.test(hostname)) {
       return extractTencentJobData(bodyText, headings, lines);
     }
@@ -205,6 +213,176 @@
     }
 
     return {};
+  }
+
+  function extractBilibiliJobData(lines) {
+    return {
+      company: "哔哩哔哩",
+      title: extractBilibiliTitle(lines),
+      location: extractBilibiliLocation(lines),
+      platform: "jobs.bilibili.com",
+      description: extractBilibiliDescription()
+    };
+  }
+
+  function extractBilibiliTitle(lines) {
+    const domTitle = cleanGenericJobTitle(extractFirstText(".position-title"));
+    if (domTitle && isLikelyJobTitle(domTitle)) return domTitle;
+
+    return lines
+      .map(cleanGenericJobTitle)
+      .find((line) => isLikelyJobTitle(line) && !isLikelyNavigationTitle(line)) || "";
+  }
+
+  function extractBilibiliLocation(lines) {
+    const tags = Array.from(document.querySelectorAll(".position-header .bili-infotags span, .position-header span"))
+      .map((element) => normalizeText(element.innerText || element.textContent || ""))
+      .filter(Boolean);
+
+    const tagLocation = tags.find(isKnownLocationLine);
+    if (tagLocation) return tagLocation;
+
+    const title = extractBilibiliTitle(lines);
+    const titleIndex = title ? lines.findIndex((line) => normalizeText(line).includes(title)) : -1;
+    const nearbyLines = titleIndex >= 0 ? lines.slice(titleIndex + 1, titleIndex + 8) : lines.slice(0, 20);
+
+    return nearbyLines.find(isKnownLocationLine) || "";
+  }
+
+  function extractBilibiliDescription() {
+    const sectionTitles = Array.from(document.querySelectorAll(".position-sub-title"));
+    const parts = [];
+
+    for (const titleElement of sectionTitles) {
+      const title = normalizeText(titleElement.innerText || titleElement.textContent || "");
+      if (!/^(部门介绍|职位亮点|职位描述)$/.test(title)) continue;
+
+      const contentElement = titleElement.nextElementSibling;
+      const content = normalizeMultilineText(contentElement?.innerText || contentElement?.textContent || "");
+      if (content) {
+        parts.push(`${title}：\n${content}`);
+      }
+    }
+
+    if (parts.length) return parts.join("\n\n");
+
+    const desc = normalizeMultilineText(extractFirstText(".position-desc"));
+    return desc;
+  }
+
+  function extractBossJobData(lines, headings) {
+    return {
+      company: extractBossCompany(lines),
+      title: extractBossTitle(headings),
+      location: extractBossLocation(lines),
+      platform: "zhipin.com",
+      description: extractBossDescription(lines)
+    };
+  }
+
+  function extractBossTitle(headings) {
+    const selectors = [
+      ".job-title",
+      ".job-primary .name",
+      ".job-info h1",
+      ".name h1",
+      "h1"
+    ];
+
+    for (const selector of selectors) {
+      const title = cleanGenericJobTitle(extractFirstText(selector));
+      if (title && isLikelyJobTitle(title)) return title;
+    }
+
+    return headings
+      .map(cleanGenericJobTitle)
+      .find((value) => isLikelyJobTitle(value) && !isLikelyNavigationTitle(value)) || "";
+  }
+
+  function extractBossCompany(lines) {
+    const selectors = [
+      ".sider-company .company-info a",
+      ".sider-company .company-name",
+      ".job-detail-company .company-name",
+      ".company-info .company-name",
+      ".company-info a[href*='/gongsi/']",
+      ".job-company-info .company-name",
+      ".detail-company-name",
+      "a[href*='/gongsi/']"
+    ];
+
+    for (const selector of selectors) {
+      const elements = Array.from(document.querySelectorAll(selector));
+      for (const element of elements) {
+        const company = cleanBossCompanyName(element.innerText || element.textContent || "");
+        if (company) return company;
+      }
+    }
+
+    const companyInfoIndex = lines.findIndex((line) => line === "公司基本信息");
+    if (companyInfoIndex >= 0) {
+      for (const line of lines.slice(companyInfoIndex + 1, companyInfoIndex + 8)) {
+        const company = cleanBossCompanyName(line);
+        if (company) return company;
+      }
+    }
+
+    return "";
+  }
+
+  function cleanBossCompanyName(text) {
+    return String(text || "")
+      .split(/\n+/)
+      .map((line) => normalizeText(line))
+      .filter(Boolean)
+      .find((line) => {
+        return line.length >= 2 &&
+          line.length <= 40 &&
+          !/^(公司基本信息|查看全部职位|BOSS直聘|Boss直聘|D轮及以上|上市公司|未融资|不需要融资|天使轮|A轮|B轮|C轮|10000人以上|互联网)$/.test(line) &&
+          !/人以上|人$/.test(line);
+      }) || "";
+  }
+
+  function extractBossLocation(lines) {
+    const title = extractBossTitle(collectHeadings());
+    const titleIndex = title ? lines.findIndex((line) => normalizeText(line).includes(title)) : -1;
+    const nearbyLines = titleIndex >= 0 ? lines.slice(titleIndex, titleIndex + 8) : lines.slice(0, 20);
+
+    return nearbyLines
+      .map((line) => normalizeText(line).match(/(北京|上海|深圳|广州|杭州|成都|武汉|西安|南京|苏州|珠海|厦门|青岛|郑州|长沙|天津|重庆|香港|新加坡)/))
+      .find(Boolean)?.[1] || "";
+  }
+
+  function extractBossDescription(lines) {
+    const selectors = [
+      ".job-detail-section .job-sec-text",
+      ".job-sec-text",
+      ".job-description",
+      ".job-detail"
+    ];
+
+    for (const selector of selectors) {
+      const elements = Array.from(document.querySelectorAll(selector));
+      for (const element of elements) {
+        const text = cleanBossDescriptionText(element.innerText || element.textContent || "");
+        if (text.length >= 20) return text;
+      }
+    }
+
+    const descIndex = lines.findIndex((line) => /^(职位描述|岗位描述)$/.test(line));
+    if (descIndex < 0) return "";
+
+    const endIndex = lines
+      .slice(descIndex + 1)
+      .findIndex((line) => /^(.*(先生|女士)|刚刚活跃|今日活跃|本周活跃|公司基本信息|微信扫码分享|举报|查看全部职位)$/.test(line));
+    const sectionEnd = endIndex >= 0 ? descIndex + 1 + endIndex : Math.min(lines.length, descIndex + 30);
+
+    return cleanBossDescriptionText(lines.slice(descIndex + 1, sectionEnd).join("\n"));
+  }
+
+  function cleanBossDescriptionText(text) {
+    const stopPattern = /(\n|^)(.*(先生|女士)|刚刚活跃|今日活跃|本周活跃|公司基本信息|微信扫码分享|举报|查看全部职位)(\n|$)[\s\S]*$/;
+    return normalizeMultilineText(String(text || "").replace(stopPattern, "\n"));
   }
 
   function extractTencentJobData(bodyText, headings, lines) {
@@ -625,7 +803,7 @@
 
   function inferDeliveryMethod(hostname) {
     const rules = [
-      { pattern: /zhipin\.com$/i, value: "boss" },
+      { pattern: /zhipin\.com$/i, value: "Boss直聘" },
       { pattern: /lagou\.com$/i, value: "拉勾" },
       { pattern: /linkedin\.com$/i, value: "LinkedIn" },
       { pattern: /liepin\.com$/i, value: "猎聘" },
@@ -1006,5 +1184,21 @@
       .replace(/\s+/g, " ")
       .replace(/\u00a0/g, " ")
       .trim();
+  }
+
+  function normalizeMultilineText(text) {
+    return String(text || "")
+      .replace(/\u00a0/g, " ")
+      .split(/\n+/)
+      .map((line) => normalizeText(line))
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  function formatLocalDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   }
 })();
