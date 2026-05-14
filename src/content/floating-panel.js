@@ -58,7 +58,7 @@
     const appliedDateInput = document.getElementById('appliedDate');
 
     // 设置默认日期
-    appliedDateInput.value = new Date().toISOString().slice(0, 10);
+    appliedDateInput.value = formatLocalDate(new Date());
 
     // 恢复表单数据
     restoreFormData();
@@ -203,7 +203,7 @@
 
       // 清空表单
       form.reset();
-      document.getElementById('appliedDate').value = new Date().toISOString().slice(0, 10);
+      document.getElementById('appliedDate').value = formatLocalDate(new Date());
     } catch (error) {
       setStatus(error.message || '写入失败', 'error');
     } finally {
@@ -219,7 +219,7 @@
     document.getElementById('jobUrl').value = data.jobUrl || '';
     document.getElementById('deliveryMethod').value = data.deliveryMethod || '官网';
     document.getElementById('status').value = data.status || '已投递';
-    document.getElementById('appliedDate').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('appliedDate').value = data.appliedDate || formatLocalDate(new Date());
     document.getElementById('notes').value = data.notes || '';
   }
 
@@ -258,6 +258,13 @@
     } catch (error) {
       console.error('恢复表单数据失败:', error);
     }
+  }
+
+  function formatLocalDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
   function clearFormData() {
