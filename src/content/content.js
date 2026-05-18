@@ -192,6 +192,10 @@
   }
 
   async function extractSiteEnhancedData(hostname, bodyText, headings, lines) {
+    if (/talent\.baidu\.com$/i.test(hostname)) {
+      return extractBaiduJobData(lines, bodyText);
+    }
+
     if (/jobs\.bilibili\.com$/i.test(hostname)) {
       return extractBilibiliJobData(lines);
     }
@@ -213,6 +217,76 @@
     }
 
     return {};
+  }
+
+  function extractBaiduJobData(lines, bodyText) {
+    return {
+      company: "百度",
+      title: extractBaiduTitle(lines),
+      location: extractBaiduLocation(lines),
+      platform: "talent.baidu.com",
+      description: extractBaiduDescription(lines, bodyText)
+    };
+  }
+
+  function extractBaiduTitle(lines) {
+    const selectors = [
+      ".job-detail-title",
+      ".job-title",
+      ".position-title",
+      ".position-name",
+      "h1"
+    ];
+
+    for (const selector of selectors) {
+      const title = cleanGenericJobTitle(extractFirstText(selector));
+      if (title && isLikelyBaiduJobTitle(title)) return title;
+    }
+
+    return lines
+      .map(cleanGenericJobTitle)
+      .find(isLikelyBaiduJobTitle) || "";
+  }
+
+  function extractBaiduLocation(lines) {
+    const detailLine = lines.find((line) => {
+      return /实习项目|校招|社招/.test(line) && /(北京市|上海市|深圳市|广州市|成都市|大连市|武汉市|西安市|南京市|苏州市|杭州市|重庆市|天津市|珠海市|厦门市|青岛市|郑州市|长沙市)/.test(line);
+    });
+
+    if (!detailLine) return "";
+
+    const match = detailLine.match(/(北京市|上海市|深圳市|广州市|成都市|大连市|武汉市|西安市|南京市|苏州市|杭州市|重庆市|天津市|珠海市|厦门市|青岛市|郑州市|长沙市)/);
+    return match ? match[1] : "";
+  }
+
+  function extractBaiduDescription(lines, bodyText) {
+    const responsibility = extractSectionFromLines(lines, /^工作职责[:：]?$/, /^职责要求[:：]?$/);
+    const requirement = extractSectionFromLines(lines, /^职责要求[:：]?$/, /^(申请职位|登录|首页|职位|招聘动态|了解百度)$/);
+    const parts = [];
+
+    if (responsibility) {
+      parts.push("工作职责：\n" + responsibility);
+    }
+    if (requirement) {
+      parts.push("职责要求：\n" + requirement);
+    }
+    if (parts.length) return parts.join("\n\n");
+
+    const match = bodyText.match(/工作职责[:：]?\s*([\s\S]*?)职责要求[:：]?\s*([\s\S]*?)(?=申请职位|$)/);
+    if (!match) return "";
+
+    return [
+      "工作职责：\n" + normalizeMultilineText(match[1]),
+      "职责要求：\n" + normalizeMultilineText(match[2])
+    ].filter((part) => part.length > 6).join("\n\n");
+  }
+
+  function isLikelyBaiduJobTitle(text) {
+    const value = normalizeText(text);
+    return value.length >= 2 &&
+      value.length <= 80 &&
+      /（?J\d+）?/.test(value) &&
+      !/^(首页|职位|招聘动态|了解百度|登录|申请职位)$/.test(value);
   }
 
   function extractBilibiliJobData(lines) {
